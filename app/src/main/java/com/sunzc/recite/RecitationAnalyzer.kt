@@ -73,7 +73,7 @@ object RecitationAnalyzer {
         }
 
         // 3. 错漏字比对: Levenshtein 对齐（原文去标点 vs 去重后的识别文本）
-        val ref = reference.filter { it.code() > 0x2E00 }  // 去 ASCII 标点/空白，保留汉字
+        val ref = reference.filter { it.code > 0x2E00 }  // 去 ASCII 标点/空白，保留汉字
         val hyp = dedupTokens.joinToString("")
         val diffs = alignDiff(ref, hyp)
 
@@ -134,16 +134,16 @@ object RecitationAnalyzer {
         while (i > 0 || j > 0) {
             when {
                 i > 0 && j > 0 && ref[i - 1] == hyp[j - 1] -> {
-                    ops.add(DiffOp(OpType.MATCH, ref[i - 1], hyp[j - 1], i - 1)); i--; j--
+                    ops.add(DiffOp(OpType.MATCH, ref[i - 1].toString(), hyp[j - 1].toString(), i - 1)); i--; j--
                 }
                 i > 0 && j > 0 && dp[i][j] == dp[i - 1][j - 1] + 1 -> {
-                    ops.add(DiffOp(OpType.WRONG, ref[i - 1], hyp[j - 1], i - 1)); i--; j--
+                    ops.add(DiffOp(OpType.WRONG, ref[i - 1].toString(), hyp[j - 1].toString(), i - 1)); i--; j--
                 }
                 i > 0 && dp[i][j] == dp[i - 1][j] + 1 -> {
-                    ops.add(DiffOp(OpType.MISSING, ref[i - 1], "", i - 1)); i--
+                    ops.add(DiffOp(OpType.MISSING, ref[i - 1].toString(), "", i - 1)); i--
                 }
                 else -> {
-                    ops.add(DiffOp(OpType.EXTRA, "", hyp[j - 1], i)); j--
+                    ops.add(DiffOp(OpType.EXTRA, "", hyp[j - 1].toString(), i)); j--
                 }
             }
         }
