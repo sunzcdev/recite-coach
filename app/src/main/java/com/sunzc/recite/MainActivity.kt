@@ -21,17 +21,26 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.k2fsa.sherpa.onnx.OfflineModelConfig
+import com.k2fsa.sherpa.onnx.OfflineParaformerModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
-import com.k2fsa.sherpa.onnx.getOfflineModelConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// 官方 getOfflineModelConfig(0) = sherpa-onnx-paraformer-zh-2023-09-14
-// （实测唯一支持字级时间戳的中文 Paraformer，2026-09-07 于 Oracle VPS 验证）
-private const val MODEL_TYPE = 0
+// 模型固定写死,不依赖 AAR 内置映射(防 API 漂移)。
+// sherpa-onnx-paraformer-zh-2023-09-14: 实测唯一支持字级时间戳的中文 Paraformer
+// (2026-09-07 Oracle VPS 实测: 30 token/30 时间戳,3处4s停顿全检出,文本0误报)
+// CI 构建时把 model.int8.onnx + tokens.txt 下载进 assets 根目录
+private fun buildConfig() = OfflineRecognizerConfig(
+    modelConfig = OfflineModelConfig(
+        paraformer = OfflineParaformerModelConfig(model = "model.int8.onnx"),
+        tokens = "tokens.txt",
+        modelType = "paraformer",
+    )
+)
 private val TEXTBOOK = "床前明月光疑是地上霜举头望明月低头思故乡"
 
 class MainActivity : ComponentActivity() {
@@ -50,7 +59,7 @@ class MainActivity : ComponentActivity() {
 
     private fun initRecognizer() {
         if (recognizer != null) return
-        val config = OfflineRecognizerConfig(modelConfig = getOfflineModelConfig(MODEL_TYPE)!!)
+        val config = buildConfig()
         config.modelConfig.numThreads = 2
         recognizer = OfflineRecognizer(assetManager = assets, config = config)
     }
