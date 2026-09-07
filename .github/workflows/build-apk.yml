@@ -1,0 +1,58 @@
+name: build-apk
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ASR model into assets
+        run: |
+          mkdir -p app/src/main/assets
+          cd app/src/main/assets
+          curl -sL -o model.int8.onnx "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14/resolve/main/model.int8.onnx"
+          cp ../../../../models/tokens.txt ./tokens.txt 2>/dev/null || \
+            curl -sL -o tokens.txt "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14/resolve/main/tokens.txt"
+          ls -lh
+          # 校验模型完整性(约 233MB)
+          SIZE=$(stat -c%s model.int8.onnx)
+          [ "$SIZE" -gt 200000000 ] || { echo "model too small: $SIZE"; exit 1; }
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Build debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk recite-coach-debug.apk
+          ls -lh recite-coach-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recite-coach-apk
+          path: recite-coach-debug.apk
+
+      - name: Publish to nightly release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          files: recite-coach-debug.apk
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
