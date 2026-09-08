@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 纯离线应用: 唯一权限=麦克风。无 INTERNET → 无网络类弹窗 -->
+    <!-- 纯离线 ASR 应用。INTERNET 仅用于日志上报（LogCat 模块） -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="false"

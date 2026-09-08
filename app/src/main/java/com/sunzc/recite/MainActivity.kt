@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Logcat.init(this)
         setContent { ReciteApp() }
     }
 
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startRecording() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            // 权限只在用户点"开始背诵"时才弹
+            Logcat.i("Recite", "permission not granted, requesting")
             permLauncher.launch(Manifest.permission.RECORD_AUDIO)
             return
         }
@@ -79,7 +80,7 @@ class MainActivity : ComponentActivity() {
             AudioFormat.ENCODING_PCM_16BIT, minBuf * 4)
         audioRecord?.startRecording()
         recording = true
-        // 后台线程持续读取，防止长时间背诵撑爆内部缓冲
+        Logcat.i("Recite", "recording started, sr=$sr, bufSize=${minBuf * 4}")
         readerThread = Thread {
             val buf = ShortArray(1600)  // 0.1s per read
             while (recording) {
@@ -109,9 +110,12 @@ class MainActivity : ComponentActivity() {
             out
         }
         if (all.size < 16000) {  // <1s 视为无效
+            Logcat.w("Recite", "audio too short: ${all.size} samples (${all.size / 16000.0}s)")
             onFail("录音太短，至少背 1 秒以上")
             return
         }
+        val durationS = all.size / 16000.0
+        Logcat.i("Recite", "recording stopped, duration=${"%.1f".format(durationS)}s, samples=${all.size}")
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 val report = withContext(Dispatchers.Default) {
@@ -121,10 +125,13 @@ class MainActivity : ComponentActivity() {
                     r.decode(stream)
                     val result = r.getResult(stream)
                     stream.release()
+                    Logcat.i("Recite", "ASR done, tokens=${result.timestamps.size}, text='${result.text}'")
                     RecitationAnalyzer.analyze(TEXTBOOK, result.tokens.toList(), result.timestamps)
                 }
+                Logcat.i("Recite", "score=${report.score}, diffs=${report.diffs.size}, pauses=${report.pauses.size}, reps=${report.repetitions.size}")
                 withContext(Dispatchers.Main) { onReport(report) }
             } catch (e: Exception) {
+                Logcat.e("Recite", "analyze failed: ${e.message}")
                 withContext(Dispatchers.Main) { onFail("分析失败: ${e.message}") }
             }
         }
