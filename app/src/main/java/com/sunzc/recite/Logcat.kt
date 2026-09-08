@@ -20,7 +20,7 @@ import java.util.UUID
  */
 object Logcat {
     private const val TAG = "Logcat"
-    private const val ENDPOINT = "http://132.226.73.69:9100/log"
+    private const val ENDPOINT = "http://100.68.80.91:8080/log"
     private const val FLUSH_INTERVAL_S = 5L
     private const val MAX_BATCH = 50
     private const val MAX_QUEUE = 500
