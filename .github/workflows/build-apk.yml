@@ -14,6 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Bump version
+        run: |
+          echo "VERSION_CODE=$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+          echo "VERSION_NAME=1.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+
       - name: Download ASR model into assets
         run: |
           mkdir -p app/src/main/assets
@@ -22,7 +27,6 @@ jobs:
           cp ../../../../models/tokens.txt ./tokens.txt 2>/dev/null || \
             curl -sL -o tokens.txt "https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14/resolve/main/tokens.txt"
           ls -lh
-          # 校验模型完整性(约 233MB)
           SIZE=$(stat -c%s model.int8.onnx)
           [ "$SIZE" -gt 200000000 ] || { echo "model too small: $SIZE"; exit 1; }
 
@@ -36,23 +40,26 @@ jobs:
       - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace \
+            -PVERSION_CODE=$VERSION_CODE \
+            -PVERSION_NAME=$VERSION_NAME
 
       - name: Rename APK
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk recite-coach-debug.apk
-          ls -lh recite-coach-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk "recite-coach-v${VERSION_NAME}.apk"
+          ls -lh "recite-coach-v${VERSION_NAME}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
           name: recite-coach-apk
-          path: recite-coach-debug.apk
+          path: "recite-coach-v${VERSION_NAME}.apk"
 
-      - name: Publish to nightly release
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nightly
-          files: recite-coach-debug.apk
-          overwrite_files: true
+          tag_name: "v${{ env.VERSION_NAME }}"
+          name: "v${{ env.VERSION_NAME }}"
+          files: "recite-coach-v${{ env.VERSION_NAME }}.apk"
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

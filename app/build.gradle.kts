@@ -11,8 +11,8 @@ android {
         applicationId = "com.sunzc.recite"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0-mvp"
+        versionCode = (project.findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?: 1
+        versionName = (project.findProperty("VERSION_NAME") as String?) ?: "0.1.0-mvp"
     }
 
     buildTypes {
